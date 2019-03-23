@@ -56,3 +56,8 @@ func AddScalar(s float32, a Vec3) Vec3 {
 func MulScalar(s float32, a Vec3) Vec3 {
 	return Vec3{a.X * s, a.Y * s, a.Z * s}
 }
+
+// Mul computes the elementwise product between two vectors
+func Mul(a Vec3, b Vec3) Vec3 {
+	return Vec3{a.X * b.X, a.Y * b.Y, a.Z * b.Z}
+}

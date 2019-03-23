@@ -15,7 +15,7 @@ import (
 
 const imageWidth = 1280
 const imageHeight = 720
-const aspectRatio = imageWidth / imageHeight
+const aspectRatio = float32(imageWidth) / float32(imageHeight)
 const numSamples = 16
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
@@ -43,6 +43,7 @@ var world = []Shape{
 	Plane{Vec3{0, 1, 0}, -1, Material{Vec3{0, 0, 1}, 0}},
 	Sphere{Vec3{0, -1, 2}, 0.5, Material{Vec3{0, 1, 0}, 0}},
 	Sphere{Vec3{-3, 2, 2}, 0.5, Material{Vec3{1, 1, 0}, 0}},
+	Sphere{Vec3{0, 1, 2}, 0.5, Material{Vec3{1, 0, 1}, 0}},
 }
 
 func castRay(ray Ray, bounced int) Vec3 {
@@ -58,9 +59,10 @@ func castRay(ray Ray, bounced int) Vec3 {
 	if closestHit != nil {
 		specular := closestHit.Material.Specular
 		if specular > 0 && bounced < 8 {
-			direction := Normalize(MulScalar(2, Sub(closestHit.Normal, ray.Direction)))
+			direction := Add(MulScalar(2*Dot(closestHit.Normal, MulScalar(-1, ray.Direction)), closestHit.Normal), ray.Direction)
 			bouncingRay := Ray{ray.At(closestHit.T), direction}
-			return Add(MulScalar(1-specular, closestHit.Material.Color), MulScalar(specular, castRay(bouncingRay, bounced+1)))
+			return Add(MulScalar(1-specular, closestHit.Material.Color),
+				MulScalar(specular, castRay(bouncingRay, bounced+1)))
 		}
 		return closestHit.Material.Color
 
@@ -72,11 +74,8 @@ func castRay(ray Ray, bounced int) Vec3 {
 func getColor(x int, y int, rng *rand.Rand) Vec3 {
 	color := Vec3{0, 0, 0}
 	for i := 0; i < numSamples; i++ {
-		// TODO: fix stretching effect
 		ySample := float32(y) + rng.Float32() - 0.5
 		xSample := float32(x) + rng.Float32() - 0.5
-		// ySample := float32(y)
-		// xSample := float32(x)
 		scaledY := -(ySample/float32(imageHeight)*2 - 1)
 		scaledX := xSample/float32(imageWidth)*2 - 1
 		scaledX *= aspectRatio
