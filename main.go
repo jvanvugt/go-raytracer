@@ -56,6 +56,7 @@ func castRay(ray Ray, bounced int) Vec3 {
 			closestHit = hit
 		}
 	}
+
 	if closestHit != nil {
 		specular := closestHit.Material.Specular
 		if specular > 0 && bounced < 8 {
@@ -65,10 +66,9 @@ func castRay(ray Ray, bounced int) Vec3 {
 				MulScalar(specular, castRay(bouncingRay, bounced+1)))
 		}
 		return closestHit.Material.Color
-
-	} else {
-		return Vec3{0.8, 0.8, 1}
 	}
+
+	return Vec3{0.8, 0.8, 1}
 }
 
 func getColor(x int, y int, rng *rand.Rand) Vec3 {
