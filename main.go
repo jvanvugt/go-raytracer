@@ -17,6 +17,7 @@ const imageWidth = 1280
 const imageHeight = 720
 const fieldOfView = 90.0
 const numSamples = 16
+const maxBounces = 50
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 
@@ -34,8 +35,18 @@ func (ray *Ray) At(t float32) Vec3 {
 // Hit represents data about a ray hitting an object
 type Hit struct {
 	T        float32
+	Position Vec3
 	Normal   Vec3
 	Material Material
+}
+
+func NewHit(t float32, ray Ray, normal Vec3, material Material) *Hit {
+	return &Hit{
+		t,
+		ray.At(t),
+		normal,
+		material,
+	}
 }
 
 // Camera to shoot rays from
@@ -64,15 +75,15 @@ func (camera *Camera) getRay(x float32, y float32) Ray {
 }
 
 var world = []Shape{
-	Sphere{Vec3{1, 1, 3}, 0.5, Material{Vec3{1, 0, 0}, 0.5}},
-	Plane{Vec3{0, 1, 0}, -1, Material{Vec3{0, 0, 1}, 0}},
-	Sphere{Vec3{0, -0.5, 2}, 0.5, Material{Vec3{0, 1, 0}, 0}},
-	Sphere{Vec3{-3, 2, 2}, 0.5, Material{Vec3{1, 1, 0}, 0}},
-	Sphere{Vec3{0, 1, 2}, 0.5, Material{Vec3{1, 0, 1}, 0}},
+	Sphere{Vec3{1, 1, 3}, 0.5, Metal{Vec3{1, 1, 1}}},
+	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{0, 0, 1}}},
+	Sphere{Vec3{0, -0.5, 2}, 0.5, Lambertian{Vec3{0, 1, 0}}},
+	Sphere{Vec3{-3, 2, 2}, 0.5, Lambertian{Vec3{1, 1, 0}}},
+	Sphere{Vec3{0, 1, 2}, 0.5, Lambertian{Vec3{1, 0, 1}}},
 }
 
 func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
-	if bounced >= 9 {
+	if bounced > maxBounces {
 		return Vec3{0, 0, 0}
 	}
 	closest := float32(math.MaxFloat32)
@@ -86,17 +97,11 @@ func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
 	}
 
 	if closestHit != nil {
-		specular := closestHit.Material.Specular
-		if specular > 0 {
-			direction := Add(MulScalar(2*Dot(closestHit.Normal, MulScalar(-1, ray.Direction)), closestHit.Normal), ray.Direction)
-			bouncingRay := Ray{ray.At(closestHit.T), direction}
-			return Add(MulScalar(1-specular, closestHit.Material.Color),
-				MulScalar(specular, castRay(bouncingRay, rng, bounced+1)))
+		didScatter, attenuation, scatteredRay := closestHit.Material.Scatter(ray, *closestHit, rng)
+		if didScatter {
+			return Mul(attenuation, castRay(scatteredRay, rng, bounced+1))
 		}
-		hitPoint := ray.At(closestHit.T)
-		direction := Normalize(Add(RandomPointInUnitSphere(rng), closestHit.Normal))
-		bouncingRay := Ray{hitPoint, direction}
-		return Add(MulScalar(0.5, castRay(bouncingRay, rng, bounced+1)), MulScalar(0.5, closestHit.Material.Color))
+		return Vec3{0, 0, 0}
 	}
 
 	return Vec3{0.8, 0.8, 1}

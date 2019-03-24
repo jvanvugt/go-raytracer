@@ -2,12 +2,37 @@ package main
 
 import (
 	"math"
+	"math/rand"
 )
 
 // Material of an object
-type Material struct {
-	Color    Vec3
-	Specular float32
+type Material interface {
+	// TODO: put result in struct?
+	Scatter(Ray, Hit, *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray)
+}
+
+// Lambertian material
+type Lambertian struct {
+	Albedo Vec3
+}
+
+// Scatter a ray on a lambertian material
+func (mat Lambertian) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray) {
+	direction := Normalize(Add(RandomPointInUnitSphere(rng), hit.Normal))
+	bouncingRay := Ray{hit.Position, direction}
+	return true, mat.Albedo, bouncingRay
+}
+
+// Metal material
+type Metal struct {
+	Albedo Vec3
+}
+
+// Scatter a ray on a metal material
+func (mat Metal) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray) {
+	direction := Sub(ray.Direction, MulScalar(2.0*Dot(hit.Normal, ray.Direction), hit.Normal))
+	bouncingRay := Ray{hit.Position, direction}
+	return Dot(direction, hit.Normal) > 0, mat.Albedo, bouncingRay
 }
 
 // Shape in the world
@@ -27,7 +52,6 @@ func (sphere Sphere) Intersect(ray Ray) *Hit {
 	a := Dot(ray.Direction, ray.Direction)
 	relPos := Sub(ray.Origin, sphere.Position)
 	b := 2 * Dot(ray.Direction, relPos)
-	// c := -2*mat.Dot(ray.Origin, sphere.Position)*mat.Dot(sphere.Position, sphere.Position) - sphere.Radius*sphere.Radius
 	c := Dot(relPos, relPos) - sphere.Radius*sphere.Radius
 
 	discriminant := float64(b*b - 4*a*c)
@@ -42,8 +66,9 @@ func (sphere Sphere) Intersect(ray Ray) *Hit {
 	if t <= 1e-3 {
 		return nil
 	}
+
 	normal := Normalize(Sub(ray.At(t), sphere.Position))
-	return &Hit{t, normal, sphere.Material}
+	return NewHit(t, ray, normal, sphere.Material)
 }
 
 // Plane in 3D space
@@ -60,5 +85,5 @@ func (plane Plane) Intersect(ray Ray) *Hit {
 		return nil
 	}
 	t := 1 / denom
-	return &Hit{t, plane.Normal, plane.Material}
+	return NewHit(t, ray, plane.Normal, plane.Material)
 }
