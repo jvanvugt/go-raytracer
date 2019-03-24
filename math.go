@@ -38,6 +38,15 @@ func Dot(a Vec3, b Vec3) float32 {
 	return a.X*b.X + a.Y*b.Y + a.Z*b.Z
 }
 
+// Cross product between two vectors
+func Cross(a Vec3, b Vec3) Vec3 {
+	return Vec3{
+		a.Y*b.Z - a.Z*b.Y,
+		a.Z*b.X - a.X*b.Z,
+		a.X*b.Y - a.Y*b.X,
+	}
+}
+
 // Normalize a vector
 func Normalize(a Vec3) Vec3 {
 	return MulScalar(1/a.Length(), a)

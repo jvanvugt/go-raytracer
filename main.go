@@ -15,7 +15,7 @@ import (
 
 const imageWidth = 1280
 const imageHeight = 720
-const aspectRatio = float32(imageWidth) / float32(imageHeight)
+const fieldOfView = 90.0
 const numSamples = 16
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
@@ -36,6 +36,31 @@ type Hit struct {
 	T        float32
 	Normal   Vec3
 	Material Material
+}
+
+// Camera to shoot rays from
+type Camera struct {
+	Position   Vec3
+	BottomLeft Vec3
+	PixelStepX Vec3
+	PixelStepY Vec3
+}
+
+func setupCamera(cameraPos Vec3, cameraTarget Vec3, up Vec3) Camera {
+	cameraDirection := Normalize(Sub(cameraTarget, cameraPos))
+	horizontalDirection := Cross(Normalize(up), cameraDirection)
+	verticalDirection := Cross(Normalize(cameraDirection), Normalize(horizontalDirection))
+	halfWidth := float32(math.Tan(fieldOfView / 2))
+	halfHeight := halfWidth * float32(imageHeight) / float32(imageWidth)
+	pixelStepX := MulScalar(2*halfWidth/(imageWidth-1), horizontalDirection)
+	pixelStepY := MulScalar(2*halfHeight/(imageHeight-1), verticalDirection)
+	bottomLeft := Sub(Sub(cameraDirection, MulScalar(halfWidth, horizontalDirection)), MulScalar(halfHeight, verticalDirection))
+	return Camera{cameraPos, bottomLeft, pixelStepX, pixelStepY}
+}
+
+func (camera *Camera) getRay(x float32, y float32) Ray {
+	direction := Add(Add(camera.BottomLeft, MulScalar(x, camera.PixelStepX)), MulScalar(y, camera.PixelStepY))
+	return Ray{camera.Position, Normalize(direction)}
 }
 
 var world = []Shape{
@@ -77,32 +102,24 @@ func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
 	return Vec3{0.8, 0.8, 1}
 }
 
-func getColor(x int, y int, rng *rand.Rand) Vec3 {
+func getColor(camera *Camera, x int, y int, rng *rand.Rand) Vec3 {
 	color := Vec3{0, 0, 0}
 	for i := 0; i < numSamples; i++ {
-		ySample := float32(y) + rng.Float32() - 0.5
-		xSample := float32(x) + rng.Float32() - 0.5
-		scaledY := -(ySample/float32(imageHeight)*2 - 1)
-		scaledX := xSample/float32(imageWidth)*2 - 1
-		scaledX *= aspectRatio
-
-		direction := Normalize(Vec3{scaledX, scaledY, 1})
-		cameraOrigin := Vec3{0, 0, 0}
-		ray := Ray{cameraOrigin, direction}
+		ray := camera.getRay(float32(x)+rng.Float32()-0.5, float32(y)+rng.Float32()-0.5)
 		color = Add(color, castRay(ray, rng, 0))
 
 	}
 	return MulScalar(1/float32(numSamples), color)
 }
 
-func processTile(img *image.NRGBA, fromX int, fromY int, toX int, toY int, waitGroup *sync.WaitGroup) {
+func processTile(img *image.NRGBA, camera *Camera, fromX int, fromY int, toX int, toY int, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 
 	rng := rand.New(rand.NewSource(0))
 	for y := fromY; y < toY; y++ {
 		for x := fromX; x < toX; x++ {
-			color := getColor(x, y, rng)
-			img.Set(x, y, color.RGBA())
+			color := getColor(camera, x, y, rng)
+			img.Set(x, imageHeight-y-1, color.RGBA())
 		}
 	}
 }
@@ -121,13 +138,18 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
+	cameraPos := Vec3{0, 0, 0}
+	target := Vec3{0, 0, 1}
+	up := Vec3{0, 1, 0}
+	camera := setupCamera(cameraPos, target, up)
+
 	img := image.NewNRGBA(image.Rect(0, 0, imageWidth, imageHeight))
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(4)
-	go processTile(img, 0, 0, imageWidth/2, imageHeight/2, &waitGroup)
-	go processTile(img, imageWidth/2, 0, imageWidth, imageHeight/2, &waitGroup)
-	go processTile(img, 0, imageHeight/2, imageWidth/2, imageHeight, &waitGroup)
-	go processTile(img, imageWidth/2, imageHeight/2, imageWidth, imageHeight, &waitGroup)
+	go processTile(img, &camera, 0, 0, imageWidth/2, imageHeight/2, &waitGroup)
+	go processTile(img, &camera, imageWidth/2, 0, imageWidth, imageHeight/2, &waitGroup)
+	go processTile(img, &camera, 0, imageHeight/2, imageWidth/2, imageHeight, &waitGroup)
+	go processTile(img, &camera, imageWidth/2, imageHeight/2, imageWidth, imageHeight, &waitGroup)
 	waitGroup.Wait()
 	fmt.Println("Hello world")
 
