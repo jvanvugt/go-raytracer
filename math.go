@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 )
 
 // Vec3 represents a 3D vector
@@ -20,6 +21,11 @@ func (v *Vec3) String() string {
 // RGBA interpretation of the vector
 func (v *Vec3) RGBA() color.Color {
 	return color.RGBA{uint8(v.X * 255), uint8(v.Y * 255), uint8(v.Z * 255), 255}
+}
+
+// SquaredLength of the vector
+func (v *Vec3) SquaredLength() float32 {
+	return Dot(*v, *v)
 }
 
 // Length of the vector
@@ -60,4 +66,19 @@ func MulScalar(s float32, a Vec3) Vec3 {
 // Mul computes the elementwise product between two vectors
 func Mul(a Vec3, b Vec3) Vec3 {
 	return Vec3{a.X * b.X, a.Y * b.Y, a.Z * b.Z}
+}
+
+// RandomUniform sample a random number in [-1, 1)
+func RandomUniform(rng *rand.Rand) float32 {
+	return rng.Float32()*2 - 1
+}
+
+// RandomPointInUnitSphere samples a random point inside the unit sphere
+func RandomPointInUnitSphere(rng *rand.Rand) Vec3 {
+	for {
+		v := Vec3{RandomUniform(rng), RandomUniform(rng), RandomUniform(rng)}
+		if v.SquaredLength() <= 1 {
+			return v
+		}
+	}
 }

@@ -41,12 +41,15 @@ type Hit struct {
 var world = []Shape{
 	Sphere{Vec3{1, 1, 3}, 0.5, Material{Vec3{1, 0, 0}, 0.5}},
 	Plane{Vec3{0, 1, 0}, -1, Material{Vec3{0, 0, 1}, 0}},
-	Sphere{Vec3{0, -1, 2}, 0.5, Material{Vec3{0, 1, 0}, 0}},
+	Sphere{Vec3{0, -0.5, 2}, 0.5, Material{Vec3{0, 1, 0}, 0}},
 	Sphere{Vec3{-3, 2, 2}, 0.5, Material{Vec3{1, 1, 0}, 0}},
 	Sphere{Vec3{0, 1, 2}, 0.5, Material{Vec3{1, 0, 1}, 0}},
 }
 
-func castRay(ray Ray, bounced int) Vec3 {
+func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
+	if bounced >= 9 {
+		return Vec3{0, 0, 0}
+	}
 	closest := float32(math.MaxFloat32)
 	var closestHit *Hit
 	for _, shape := range world {
@@ -59,13 +62,16 @@ func castRay(ray Ray, bounced int) Vec3 {
 
 	if closestHit != nil {
 		specular := closestHit.Material.Specular
-		if specular > 0 && bounced < 8 {
+		if specular > 0 {
 			direction := Add(MulScalar(2*Dot(closestHit.Normal, MulScalar(-1, ray.Direction)), closestHit.Normal), ray.Direction)
 			bouncingRay := Ray{ray.At(closestHit.T), direction}
 			return Add(MulScalar(1-specular, closestHit.Material.Color),
-				MulScalar(specular, castRay(bouncingRay, bounced+1)))
+				MulScalar(specular, castRay(bouncingRay, rng, bounced+1)))
 		}
-		return closestHit.Material.Color
+		hitPoint := ray.At(closestHit.T)
+		direction := Normalize(Add(RandomPointInUnitSphere(rng), closestHit.Normal))
+		bouncingRay := Ray{hitPoint, direction}
+		return Add(MulScalar(0.5, castRay(bouncingRay, rng, bounced+1)), MulScalar(0.5, closestHit.Material.Color))
 	}
 
 	return Vec3{0.8, 0.8, 1}
@@ -83,7 +89,7 @@ func getColor(x int, y int, rng *rand.Rand) Vec3 {
 		direction := Normalize(Vec3{scaledX, scaledY, 1})
 		cameraOrigin := Vec3{0, 0, 0}
 		ray := Ray{cameraOrigin, direction}
-		color = Add(color, castRay(ray, 0))
+		color = Add(color, castRay(ray, rng, 0))
 
 	}
 	return MulScalar(1/float32(numSamples), color)
