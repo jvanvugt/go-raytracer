@@ -16,7 +16,7 @@ import (
 const imageWidth = 1280
 const imageHeight = 720
 const fieldOfView = 90.0
-const numSamples = 16
+const numSamples = 100
 const maxBounces = 50
 
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
@@ -40,6 +40,7 @@ type Hit struct {
 	Material Material
 }
 
+// NewHit creates a Hit object
 func NewHit(t float32, ray Ray, normal Vec3, material Material) *Hit {
 	return &Hit{
 		t,
@@ -75,12 +76,19 @@ func (camera *Camera) getRay(x float32, y float32) Ray {
 }
 
 var world = []Shape{
-	Sphere{Vec3{1, 1, 3}, 0.5, Metal{Vec3{1, 1, 1}}},
-	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{0, 0, 1}}},
+	Sphere{Vec3{1, 1, 3}, 0.5, Metal{Vec3{1, 1, 1}, 0.3}},
+	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{0.3, 0.2, 0.8}}},
 	Sphere{Vec3{0, -0.5, 2}, 0.5, Lambertian{Vec3{0, 1, 0}}},
 	Sphere{Vec3{-3, 2, 2}, 0.5, Lambertian{Vec3{1, 1, 0}}},
 	Sphere{Vec3{0, 1, 2}, 0.5, Lambertian{Vec3{1, 0, 1}}},
 }
+
+// var world = []Shape{
+// 	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{140 / 255., 245 / 255., 98 / 255.}}},
+// 	Sphere{Vec3{-2, 0, 2}, 1, Metal{Vec3{1, 1, 1}, 0.2}},
+// 	Sphere{Vec3{0, 0, 2}, 1, Lambertian{Vec3{255 / 255., 200 / 255., 210 / 255.}}},
+// 	Sphere{Vec3{2, 0, 2}, 1, Metal{Vec3{0.8, 0.75, 1}, 0}},
+// }
 
 func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
 	if bounced > maxBounces {
@@ -104,7 +112,7 @@ func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
 		return Vec3{0, 0, 0}
 	}
 
-	return Vec3{0.8, 0.8, 1}
+	return Add(MulScalar((ray.Direction.Y+1)/2, Vec3{0.6, 0.6, 1}), MulScalar(1-(ray.Direction.Y+1)/2, Vec3{1, 1, 1}))
 }
 
 func getColor(camera *Camera, x int, y int, rng *rand.Rand) Vec3 {
@@ -114,7 +122,7 @@ func getColor(camera *Camera, x int, y int, rng *rand.Rand) Vec3 {
 		color = Add(color, castRay(ray, rng, 0))
 
 	}
-	return MulScalar(1/float32(numSamples), color)
+	return DivScalar(float32(numSamples), color)
 }
 
 func processTile(img *image.NRGBA, camera *Camera, fromX int, fromY int, toX int, toY int, waitGroup *sync.WaitGroup) {

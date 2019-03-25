@@ -26,11 +26,13 @@ func (mat Lambertian) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool
 // Metal material
 type Metal struct {
 	Albedo Vec3
+	fuzz   float32
 }
 
 // Scatter a ray on a metal material
 func (mat Metal) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray) {
 	direction := Sub(ray.Direction, MulScalar(2.0*Dot(hit.Normal, ray.Direction), hit.Normal))
+	direction = Add(direction, MulScalar(mat.fuzz, RandomPointInUnitSphere(rng)))
 	bouncingRay := Ray{hit.Position, direction}
 	return Dot(direction, hit.Normal) > 0, mat.Albedo, bouncingRay
 }
@@ -80,10 +82,14 @@ type Plane struct {
 
 // Intersect checks if a ray intersects with the plane
 func (plane Plane) Intersect(ray Ray) *Hit {
-	denom := Dot(Sub(ray.Origin, plane.Normal), ray.Direction)
-	if denom <= 0 {
+	denom := Dot(plane.Normal, ray.Direction)
+	if math.Abs(float64(denom)) < 1e-6 {
 		return nil
 	}
-	t := 1 / denom
+	planePoint := MulScalar(plane.Along, plane.Normal)
+	t := (Dot(planePoint, plane.Normal) - Dot(plane.Normal, ray.Origin)) / denom
+	if t < 1e-3 {
+		return nil
+	}
 	return NewHit(t, ray, plane.Normal, plane.Material)
 }
