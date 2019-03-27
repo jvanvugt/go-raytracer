@@ -30,7 +30,7 @@ func (v *Vec3) SquaredLength() float32 {
 
 // Length of the vector
 func (v *Vec3) Length() float32 {
-	return float32(math.Sqrt(float64(Dot(*v, *v))))
+	return Sqrt(Dot(*v, *v))
 }
 
 // Dot product between two vectors
@@ -95,4 +95,9 @@ func RandomPointInUnitSphere(rng *rand.Rand) Vec3 {
 			return v
 		}
 	}
+}
+
+// Compute the sqrt of a float32
+func Sqrt(x float32) float32 {
+	return float32(math.Sqrt(float64(x)))
 }

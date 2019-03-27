@@ -29,12 +29,51 @@ type Metal struct {
 	fuzz   float32
 }
 
+func reflect(incoming Vec3, normal Vec3) Vec3 {
+	return Sub(incoming, MulScalar(2.0*Dot(normal, incoming), normal))
+}
+
 // Scatter a ray on a metal material
 func (mat Metal) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray) {
-	direction := Sub(ray.Direction, MulScalar(2.0*Dot(hit.Normal, ray.Direction), hit.Normal))
-	direction = Add(direction, MulScalar(mat.fuzz, RandomPointInUnitSphere(rng)))
+	direction := reflect(ray.Direction, hit.Normal)
+	direction = Normalize(Add(direction, MulScalar(mat.fuzz, RandomPointInUnitSphere(rng))))
 	bouncingRay := Ray{hit.Position, direction}
 	return Dot(direction, hit.Normal) > 0, mat.Albedo, bouncingRay
+}
+
+// Dielectric materials both reflect and refrect
+type Dielectric struct {
+	ReflectionIndex float32
+}
+
+func refract(incoming Vec3, normal Vec3, niOverNt float32) (didRefract bool, refraction Vec3) {
+	dt := Dot(incoming, normal)
+	discriminant := 1 - niOverNt*niOverNt*(1-dt*dt)
+	if discriminant > 0 {
+		refraction = Normalize(Sub(MulScalar(niOverNt, Sub(incoming, MulScalar(dt, normal))), MulScalar(Sqrt(discriminant), normal)))
+		return true, refraction
+	}
+	return false, Vec3{}
+}
+
+// Scatter a ray on a dielectric
+func (mat Dielectric) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray) {
+	reflected := reflect(ray.Direction, hit.Normal)
+	var outwardNormal Vec3
+	var niOverNt float32
+	if Dot(ray.Direction, hit.Normal) > 0 {
+		outwardNormal = MulScalar(-1, hit.Normal)
+		niOverNt = mat.ReflectionIndex
+	} else {
+		outwardNormal = hit.Normal
+		niOverNt = 1.0 / mat.ReflectionIndex
+	}
+
+	didRefract, refracted := refract(ray.Direction, outwardNormal, niOverNt)
+	if didRefract {
+		return true, Vec3{1, 1, 1}, Ray{hit.Position, refracted}
+	}
+	return true, Vec3{1, 1, 1}, Ray{hit.Position, reflected}
 }
 
 // Shape in the world
@@ -56,14 +95,14 @@ func (sphere Sphere) Intersect(ray Ray) *Hit {
 	b := 2 * Dot(ray.Direction, relPos)
 	c := Dot(relPos, relPos) - sphere.Radius*sphere.Radius
 
-	discriminant := float64(b*b - 4*a*c)
+	discriminant := b*b - 4*a*c
 	if discriminant < 0 {
 		return nil
 	}
 
-	t := (-b - float32(math.Sqrt(discriminant))) / (2 * a)
+	t := (-b - Sqrt(discriminant)) / (2 * a)
 	if t < 0 {
-		t = (-b + float32(math.Sqrt(discriminant))) / (2 * a)
+		t = (-b + Sqrt(discriminant)) / (2 * a)
 	}
 	if t <= 1e-3 {
 		return nil

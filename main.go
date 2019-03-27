@@ -75,20 +75,30 @@ func (camera *Camera) getRay(x float32, y float32) Ray {
 	return Ray{camera.Position, Normalize(direction)}
 }
 
-var world = []Shape{
-	Sphere{Vec3{1, 1, 3}, 0.5, Metal{Vec3{1, 1, 1}, 0.3}},
-	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{0.3, 0.2, 0.8}}},
-	Sphere{Vec3{0, -0.5, 2}, 0.5, Lambertian{Vec3{0, 1, 0}}},
-	Sphere{Vec3{-3, 2, 2}, 0.5, Lambertian{Vec3{1, 1, 0}}},
-	Sphere{Vec3{0, 1, 2}, 0.5, Lambertian{Vec3{1, 0, 1}}},
-}
+// My own scene
+// var world = []Shape{
+// 	Sphere{Vec3{1, 1, 3}, 0.5, Metal{Vec3{1, 1, 1}, 0.3}},
+// 	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{0.7, 0.8, 1.0}}},
+// 	Sphere{Vec3{0, -0.5, 2}, 0.5, Lambertian{Vec3{0, 1, 0}}},
+// 	Sphere{Vec3{-3, 2, 2}, 0.5, Lambertian{Vec3{1, 1, 0}}},
+// 	Sphere{Vec3{0, 1, 2}, 0.5, Lambertian{Vec3{1, 0, 1}}},
+// }
 
+// Two metal balls
 // var world = []Shape{
 // 	Plane{Vec3{0, 1, 0}, -1, Lambertian{Vec3{140 / 255., 245 / 255., 98 / 255.}}},
 // 	Sphere{Vec3{-2, 0, 2}, 1, Metal{Vec3{1, 1, 1}, 0.2}},
 // 	Sphere{Vec3{0, 0, 2}, 1, Lambertian{Vec3{255 / 255., 200 / 255., 210 / 255.}}},
 // 	Sphere{Vec3{2, 0, 2}, 1, Metal{Vec3{0.8, 0.75, 1}, 0}},
 // }
+
+// Dielectrics
+var world = []Shape{
+	Sphere{Vec3{0, 0, 1}, 0.5, Lambertian{Vec3{0.1, 0.2, 0.5}}},
+	Sphere{Vec3{0, -100.5, 1}, 100, Lambertian{Vec3{0.8, 0.8, 0.0}}},
+	Sphere{Vec3{1, 0, 1}, 0.5, Metal{Vec3{0.8, 0.6, 0.2}, 0}},
+	Sphere{Vec3{-1, 0, 1}, 0.5, Dielectric{1.5}},
+}
 
 func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
 	if bounced > maxBounces {
@@ -132,7 +142,8 @@ func processTile(img *image.NRGBA, camera *Camera, fromX int, fromY int, toX int
 	for y := fromY; y < toY; y++ {
 		for x := fromX; x < toX; x++ {
 			color := getColor(camera, x, y, rng)
-			img.Set(x, imageHeight-y-1, color.RGBA())
+			gammaCorrectedColor := Vec3{Sqrt(color.X), Sqrt(color.Y), Sqrt(color.Z)}
+			img.Set(x, imageHeight-y-1, gammaCorrectedColor.RGBA())
 		}
 	}
 }
