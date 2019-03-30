@@ -17,23 +17,23 @@ type Vec3 struct {
 // Pi is the circle constant
 const Pi = float32(math.Pi)
 
-func (v *Vec3) String() string {
+func (v Vec3) String() string {
 	return fmt.Sprintf("(%f, %f, %f)", v.X, v.Y, v.Z)
 }
 
 // RGBA interpretation of the vector
-func (v *Vec3) RGBA() color.Color {
+func (v Vec3) RGBA() color.Color {
 	return color.RGBA{uint8(v.X * 255), uint8(v.Y * 255), uint8(v.Z * 255), 255}
 }
 
 // SquaredLength of the vector
-func (v *Vec3) SquaredLength() float32 {
-	return Dot(*v, *v)
+func (v Vec3) SquaredLength() float32 {
+	return Dot(v, v)
 }
 
 // Length of the vector
-func (v *Vec3) Length() float32 {
-	return Sqrt(Dot(*v, *v))
+func (v Vec3) Length() float32 {
+	return Sqrt(v.SquaredLength())
 }
 
 // Dot product between two vectors
@@ -113,4 +113,12 @@ func Deg2Rad(angle float32) float32 {
 // Rad2Deg converts an angle in radians to degrees
 func Rad2Deg(angle float32) float32 {
 	return angle * 180 / Pi
+}
+
+// Abs computes the absolute value of a float32
+func Abs(x float32) float32 {
+	if x > 0 {
+		return x
+	}
+	return -x
 }

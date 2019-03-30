@@ -150,3 +150,55 @@ func (plane Plane) Intersect(ray Ray) *Hit {
 	}
 	return NewHit(t, ray, plane.Normal, plane.Material)
 }
+
+// Triangle in 3D space. Vertices are counter-clockwise
+type Triangle struct {
+	V1       Vec3
+	V2       Vec3
+	V3       Vec3
+	Material Material
+}
+
+// Different parameterisation of the plane
+type planeWithPoint struct {
+	Normal   Vec3
+	Point    Vec3
+	Material Material
+}
+
+// Intersect checks if a ray intersects with the plane
+func (plane planeWithPoint) Intersect(ray Ray) *Hit {
+	denom := Dot(plane.Normal, ray.Direction)
+	if math.Abs(float64(denom)) < 1e-6 {
+		return nil
+	}
+	t := (Dot(plane.Point, plane.Normal) - Dot(plane.Normal, ray.Origin)) / denom
+	if t < 1e-3 {
+		return nil
+	}
+	return NewHit(t, ray, plane.Normal, plane.Material)
+}
+
+// Intersect checks if a ray intersects with the triangle
+func (triangle Triangle) Intersect(ray Ray) *Hit {
+	// First we find out where on the plane of the triangle the ray intersects
+	relV2 := Sub(triangle.V2, triangle.V1)
+	relV3 := Sub(triangle.V3, triangle.V1)
+	// We don't normalize directly, because the calucations below need the unnormalized normal
+	normal := Cross(relV2, relV3)
+	plane := planeWithPoint{Normalize(normal), triangle.V1, triangle.Material}
+	hit := plane.Intersect(ray)
+	if hit == nil {
+		return nil
+	}
+
+	// Use the barycentric representation to find out if the point is inside the triangle
+	normalSquaredLength := normal.SquaredLength()
+	gamma := Dot(Cross(relV2, Sub(hit.Position, triangle.V1)), normal) / normalSquaredLength
+	beta := Dot(Cross(Sub(hit.Position, triangle.V1), relV3), normal) / normalSquaredLength
+	alpha := 1 - gamma - beta
+	if 0 <= alpha && alpha <= 1 && 0 <= beta && beta <= 1 && 0 <= gamma && gamma <= 1 {
+		return hit
+	}
+	return nil
+}
