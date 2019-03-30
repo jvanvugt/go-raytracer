@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math"
 	"math/rand"
 )
@@ -56,23 +57,40 @@ func refract(incoming Vec3, normal Vec3, niOverNt float32) (didRefract bool, ref
 	return false, Vec3{}
 }
 
+func schlick(cosine float32, reflectionIndex float32) float32 {
+	r0 := (1 - reflectionIndex) / (1 + reflectionIndex)
+	r0 *= r0
+	base := 1 - cosine
+	return r0 + (1-r0)*base*base*base*base*base
+}
+
+func assertUnitLength(v Vec3) {
+	if math.Abs(1-float64(v.Length())) > 1e-3 {
+		log.Fatal("Vector is not unit length: ", v.Length())
+	}
+}
+
 // Scatter a ray on a dielectric
 func (mat Dielectric) Scatter(ray Ray, hit Hit, rng *rand.Rand) (didScatter bool, attenuation Vec3, scattered Ray) {
-	reflected := reflect(ray.Direction, hit.Normal)
 	var outwardNormal Vec3
 	var niOverNt float32
+	var cosine float32
 	if Dot(ray.Direction, hit.Normal) > 0 {
 		outwardNormal = MulScalar(-1, hit.Normal)
 		niOverNt = mat.ReflectionIndex
+		cosine = mat.ReflectionIndex * Dot(ray.Direction, hit.Normal)
 	} else {
 		outwardNormal = hit.Normal
 		niOverNt = 1.0 / mat.ReflectionIndex
+		cosine = -Dot(ray.Direction, hit.Normal)
 	}
 
 	didRefract, refracted := refract(ray.Direction, outwardNormal, niOverNt)
-	if didRefract {
+	if didRefract && schlick(cosine, mat.ReflectionIndex) < rng.Float32() {
 		return true, Vec3{1, 1, 1}, Ray{hit.Position, refracted}
 	}
+
+	reflected := reflect(ray.Direction, hit.Normal)
 	return true, Vec3{1, 1, 1}, Ray{hit.Position, reflected}
 }
 
@@ -108,7 +126,7 @@ func (sphere Sphere) Intersect(ray Ray) *Hit {
 		return nil
 	}
 
-	normal := Normalize(Sub(ray.At(t), sphere.Position))
+	normal := Normalize(DivScalar(sphere.Radius, Sub(ray.At(t), sphere.Position)))
 	return NewHit(t, ray, normal, sphere.Material)
 }
 

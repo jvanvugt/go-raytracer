@@ -14,6 +14,9 @@ type Vec3 struct {
 	Z float32
 }
 
+// Pi is the circle constant
+const Pi = float32(math.Pi)
+
 func (v *Vec3) String() string {
 	return fmt.Sprintf("(%f, %f, %f)", v.X, v.Y, v.Z)
 }
@@ -49,7 +52,7 @@ func Cross(a Vec3, b Vec3) Vec3 {
 
 // Normalize a vector
 func Normalize(a Vec3) Vec3 {
-	return MulScalar(1/a.Length(), a)
+	return DivScalar(a.Length(), a)
 }
 
 // Sub computes a - b
@@ -97,7 +100,17 @@ func RandomPointInUnitSphere(rng *rand.Rand) Vec3 {
 	}
 }
 
-// Compute the sqrt of a float32
+// Sqrt computes the sqrt of a float32
 func Sqrt(x float32) float32 {
 	return float32(math.Sqrt(float64(x)))
+}
+
+// Deg2Rad converts an angle in degrees to radians
+func Deg2Rad(angle float32) float32 {
+	return angle / 180 * Pi
+}
+
+// Rad2Deg converts an angle in radians to degrees
+func Rad2Deg(angle float32) float32 {
+	return angle * 180 / Pi
 }

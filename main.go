@@ -15,7 +15,7 @@ import (
 
 const imageWidth = 1280
 const imageHeight = 720
-const fieldOfView = 90.0
+const fieldOfView float32 = 90.0
 const numSamples = 100
 const maxBounces = 50
 
@@ -62,7 +62,7 @@ func setupCamera(cameraPos Vec3, cameraTarget Vec3, up Vec3) Camera {
 	cameraDirection := Normalize(Sub(cameraTarget, cameraPos))
 	horizontalDirection := Cross(Normalize(up), cameraDirection)
 	verticalDirection := Cross(Normalize(cameraDirection), Normalize(horizontalDirection))
-	halfWidth := float32(math.Tan(fieldOfView / 2))
+	halfWidth := float32(math.Tan(float64(Deg2Rad(fieldOfView)) / 2.0))
 	halfHeight := halfWidth * float32(imageHeight) / float32(imageWidth)
 	pixelStepX := MulScalar(2*halfWidth/(imageWidth-1), horizontalDirection)
 	pixelStepY := MulScalar(2*halfHeight/(imageHeight-1), verticalDirection)
@@ -94,10 +94,10 @@ func (camera *Camera) getRay(x float32, y float32) Ray {
 
 // Dielectrics
 var world = []Shape{
-	Sphere{Vec3{0, 0, 1}, 0.5, Lambertian{Vec3{0.1, 0.2, 0.5}}},
+	Sphere{Vec3{0, 0, 2}, 0.5, Lambertian{Vec3{0.1, 0.2, 0.5}}},
 	Sphere{Vec3{0, -100.5, 1}, 100, Lambertian{Vec3{0.8, 0.8, 0.0}}},
-	Sphere{Vec3{1, 0, 1}, 0.5, Metal{Vec3{0.8, 0.6, 0.2}, 0}},
-	Sphere{Vec3{-1, 0, 1}, 0.5, Dielectric{1.5}},
+	Sphere{Vec3{1, 0, 2}, 0.5, Metal{Vec3{0.8, 0.6, 0.2}, 0}},
+	Sphere{Vec3{-1, 0, 2}, 0.45, Dielectric{1.5}},
 }
 
 func castRay(ray Ray, rng *rand.Rand, bounced int) Vec3 {
